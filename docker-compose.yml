@@ -1,0 +1,10 @@
+version: "3"
+services:
+  reverse:
+    build:
+      context: .
+    image: "reverse"
+    volumes:
+      - ./src:/job/
+    ports:
+      - "80:8000"
