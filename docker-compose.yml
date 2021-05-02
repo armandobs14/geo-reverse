@@ -1,10 +1,22 @@
 version: "3"
 services:
+  reverse-proxy:
+    image: traefik:v2.4
+    command: --api.insecure=true --providers.docker
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
   reverse:
+    labels:
+      - "traefik.docker.network=proxy"
+      - "traefik.http.services.reverse.loadbalancer.server.port=8000"
+      - "traefik.http.routers.reverse.rule=Host(`reverse.localhost`)"
     build:
       context: .
     image: "reverse"
     volumes:
       - ./src:/job/
     ports:
-      - "80:8000"
+      - "8000"
