@@ -1,22 +1,72 @@
 version: "3"
 services:
-  reverse-proxy:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    container_name: zookeeper
+
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    container_name: kafka
+
+    depends_on:
+      - zookeeper
+    ports:
+      - 9092:9092
+      - 29092:29092
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  kafdrop:
+    labels:
+      - "traefik.docker.network=proxy"
+      - "traefik.http.services.kafdrop.loadbalancer.server.port=9000"
+      - "traefik.http.routers.kafdrop.rule=Host(`kafdrop.localhost`)"
+    image: obsidiandynamics/kafdrop:latest
+    container_name: kafdrop
+
+    depends_on:
+      - kafka
+    ports:
+      - 9000:9000
+    environment:
+      KAFKA_BROKERCONNECT: kafka:29092
+
+  traefik:
     image: traefik:v2.4
+    container_name: traefik
     command: --api.insecure=true --providers.docker
     ports:
       - "80:80"
       - "8080:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+
   reverse:
     labels:
       - "traefik.docker.network=proxy"
       - "traefik.http.services.reverse.loadbalancer.server.port=8000"
       - "traefik.http.routers.reverse.rule=Host(`reverse.localhost`)"
+    # command: ["python3", "/app/src/main.py"]
+    command: ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
     build:
       context: .
     image: "reverse"
+    environment:
+      KAFKA_BROKERCONNECT: kafka:29092
+      APPLICATTION: API
     volumes:
-      - ./src:/job/
-    ports:
-      - "8000"
+      - ./src:/app/src
+    # ports:
+    #   - "8000:8000"
+    depends_on:
+      - kafka
+    restart: always
