@@ -55,16 +55,18 @@ services:
       - "traefik.docker.network=proxy"
       - "traefik.http.services.reverse.loadbalancer.server.port=8000"
       - "traefik.http.routers.reverse.rule=Host(`reverse.localhost`)"
-    command: ["python3", "/app/src/main.py"]
+    # command: ["python3", "/app/src/main.py"]
+    command: ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
     build:
       context: .
     image: "reverse"
     environment:
       KAFKA_BROKERCONNECT: kafka:29092
+      APPLICATTION: API
     volumes:
       - ./src:/app/src
-    ports:
-      - "8000"
+    # ports:
+    #   - "8000:8000"
     depends_on:
       - kafka
     restart: always
