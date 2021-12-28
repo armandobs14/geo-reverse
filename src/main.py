@@ -1,3 +1,4 @@
+from fastapi import FastAPI
 import logging
 import json
 import os
@@ -9,7 +10,7 @@ class App:
         app = FastAPI()
 
         @app.get("/reverse/{x}/{y}")
-        async def read_item(x: float, y: float, q: Optional[str] = None):
+        async def read_item(x: float, y: float):
             return get_address(x, y)
 
         return app
